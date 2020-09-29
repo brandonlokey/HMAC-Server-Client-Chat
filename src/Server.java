@@ -44,11 +44,11 @@ public class Server {
             SecretKey myHmacKey = new SecretKeySpec(hmacKey, 0, hmacKey.length, "HmacSHA256");
 
             // Initialize decrypter/encryptor
-            Cipher decipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
-            decipher.init(Cipher.DECRYPT_MODE, desKey);
+            Cipher DESdecipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
+            DESdecipher.init(Cipher.DECRYPT_MODE, desKey);
 
-            Cipher ecipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
-            ecipher.init(Cipher.ENCRYPT_MODE, desKey);
+            Cipher DESencipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
+            DESencipher.init(Cipher.ENCRYPT_MODE, desKey);
 
             // Initialize HMAC
             Mac mac = Mac.getInstance("HmacSHA256");
@@ -56,9 +56,9 @@ public class Server {
 
             String decLine = "";
             String sentLine = "";
+            String msg = "";
             byte[] hmac;
-
-            while (!decLine.equals("Over") || !sentLine.equals("Over")) {
+            while (!msg.equals("Over") || !sentLine.equals("Over")) {
                 try {
                     int length = in.readInt();
 
@@ -70,11 +70,11 @@ public class Server {
 
                         // Decrypt it
                         //byte[] hmacBytes = decipher.doFinal(message);
-                        byte[] decBytes = decipher.doFinal(message);
+                        byte[] decBytes = DESdecipher.doFinal(message);
                         decLine = new String(decBytes);
 
                         // Retrieve message and digest
-                        String msg = decLine.substring(0, decLine.length() - 64);
+                        msg = decLine.substring(0, decLine.length() - 64);
                         String digest = decLine.substring(decLine.length() - 64);
 
                         // Perform own hmac for verification
@@ -88,13 +88,14 @@ public class Server {
                         System.out.println("Received HMAC: " + digest);
                         System.out.println("Decrypted: " + msg);
 
+                        // HMAC Verification
                         if (digest.equals(hmacString)) {
                             System.out.println("HMAC VERIFIED");
                         }
 
                         System.out.println("********************");
 
-                        if (decLine.equals("Over")) {
+                        if (msg.equals("Over")) {
                             System.exit(0);
                         }
 
@@ -103,12 +104,16 @@ public class Server {
                         sentLine = input.nextLine();
 
                         // Encrypt message
-                        byte[] encLine = ecipher.doFinal(sentLine.getBytes());
+                        hmac = mac.doFinal(sentLine.getBytes());
+                        String hmacLine = sentLine + toHexString(hmac);
+                        byte[] encLine = DESencipher.doFinal(hmacLine.getBytes());
 
                         System.out.println("********************");
                         System.out.println("Plaintext: " + sentLine);
-                        System.out.println("Key: " + DESkey);
-                        System.out.println("Encrypted: " + new String(encLine));
+                        System.out.println("Shared DES Key: " + toHexString(DESkey));
+                        System.out.println("Shared HMAC Key: " + toHexString(hmacKey));
+                        System.out.println("Sender Side HMAC: " + toHexString(hmac));
+                        System.out.println("Sent Ciphertext: " + new String(encLine));
                         System.out.println("********************");
 
                         // Send to client

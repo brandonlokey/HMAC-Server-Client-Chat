@@ -57,14 +57,16 @@ public class Client {
 
             String sentLine = "";
             String decLine = "";
+            String msg = "";
+            byte[] hmac;
             // Take messages until "Over" entered
-            while(!sentLine.equals("Over") || !decLine.equals("Over")) {
+            while(!sentLine.equals("Over") || !msg.equals("Over")) {
                 try {
                     System.out.print("\nEnter text (Type 'Over' to stop): ");
 
                     // Get line + HMAC + encrypted line
                     sentLine = input.nextLine();
-                    byte[] hmac = mac.doFinal(sentLine.getBytes());
+                    hmac = mac.doFinal(sentLine.getBytes());
                     String hmacLine = sentLine + toHexString(hmac);
                     byte[] encLine = DESencipher.doFinal(hmacLine.getBytes());
 
@@ -96,10 +98,25 @@ public class Client {
                         byte[] decBytes = DESdecipher.doFinal(message);
                         decLine = new String(decBytes);
 
+                        // Retrieve message and digest
+                        msg = decLine.substring(0, decLine.length() - 64);
+                        String digest = decLine.substring(decLine.length() - 64);
+
+                        // Perform own hmac for verification
+                        hmac = mac.doFinal(msg.getBytes());
+                        String hmacString = toHexString(hmac);
+
                         System.out.println("********************");
-                        System.out.println("Encrypted: " + new String(message));
-                        System.out.println("Key: " + DESkey);
-                        System.out.println("Decrypted: " + decLine);
+                        System.out.println("Recieved ciphertext: " + new String(message));
+                        System.out.println("DES Key: " + toHexString(DESkey));
+                        System.out.println("HMAC Key: " + toHexString(hmacKey));
+                        System.out.println("Received HMAC: " + digest);
+                        System.out.println("Decrypted: " + msg);
+
+                        // HMAC Verification
+                        if (digest.equals(hmacString)) {
+                            System.out.println("HMAC VERIFIED");
+                        }
                         System.out.println("********************");
                     }
                 }
