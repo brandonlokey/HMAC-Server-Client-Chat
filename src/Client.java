@@ -1,5 +1,6 @@
 import javax.crypto.*;
 import java.io.*;
+import java.math.BigInteger;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.InvalidKeyException;
@@ -61,16 +62,17 @@ public class Client {
                 try {
                     System.out.print("\nEnter text (Type 'Over' to stop): ");
 
-                    // Get line + encrypted line
+                    // Get line + HMAC + encrypted line
                     sentLine = input.nextLine();
-                    byte[] hmacLine = mac.doFinal(sentLine.getBytes());
-                    byte[] encLine = DESencipher.doFinal(hmacLine);
+                    byte[] hmac = mac.doFinal(sentLine.getBytes());
+                    String hmacLine = sentLine + toHexString(hmac);
+                    byte[] encLine = DESencipher.doFinal(hmacLine.getBytes());
 
                     System.out.println("********************");
                     System.out.println("Plaintext: " + sentLine);
-                    System.out.println("DES Key: " + DESkey);
-                    System.out.println("HMAC Key: " + hmacKey);
-                    System.out.println("Sender Side HMAC: " + new String(hmacLine));
+                    System.out.println("Shared DES Key: " + toHexString(DESkey));
+                    System.out.println("Shared HMAC Key: " + toHexString(hmacKey));
+                    System.out.println("Sender Side HMAC: " + toHexString(hmac));
                     System.out.println("Sent Ciphertext: " + new String(encLine));
                     System.out.println("********************");
 
@@ -136,5 +138,20 @@ public class Client {
     public static void main(String args[])
     {
         Client client = new Client("127.0.0.1", 5000);
+    }
+
+    public static String toHexString(byte[] hash) {
+        // Convert byte array into signum representation
+        BigInteger number = new BigInteger(1, hash);
+
+        // Convert message digest into hex value
+        StringBuilder hexString = new StringBuilder(number.toString(16));
+
+        // Pad with leading zeros
+        while (hexString.length() < 32) {
+            hexString.insert(0, '0');
+        }
+
+        return hexString.toString();
     }
 }

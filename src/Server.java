@@ -1,6 +1,7 @@
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
+import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
@@ -49,11 +50,13 @@ public class Server {
             Cipher ecipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
             ecipher.init(Cipher.ENCRYPT_MODE, desKey);
 
+            // Initialize HMAC
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(myHmacKey);
 
             String decLine = "";
             String sentLine = "";
+            byte[] hmac;
 
             while (!decLine.equals("Over") || !sentLine.equals("Over")) {
                 try {
@@ -66,16 +69,29 @@ public class Server {
                         in.readFully(message, 0, message.length);
 
                         // Decrypt it
-                        byte[] hmacBytes = decipher.doFinal(message);
-                        byte[] decBytes = mac.doFinal(hmacBytes);
+                        //byte[] hmacBytes = decipher.doFinal(message);
+                        byte[] decBytes = decipher.doFinal(message);
                         decLine = new String(decBytes);
 
+                        // Retrieve message and digest
+                        String msg = decLine.substring(0, decLine.length() - 64);
+                        String digest = decLine.substring(decLine.length() - 64);
+
+                        // Perform own hmac for verification
+                        hmac = mac.doFinal(msg.getBytes());
+                        String hmacString = toHexString(hmac);
+
                         System.out.println("********************");
-                        System.out.println("Encrypted: " + new String(message));
-                        System.out.println("DES Key: " + DESkey);
-                        System.out.println("HMAC Key: " + hmacKey);
-                        System.out.println("Received HMAC: " + new String(hmacBytes));
-                        System.out.println("Decrypted: " + decLine);
+                        System.out.println("Recieved ciphertext: " + new String(message));
+                        System.out.println("DES Key: " + toHexString(DESkey));
+                        System.out.println("HMAC Key: " + toHexString(hmacKey));
+                        System.out.println("Received HMAC: " + digest);
+                        System.out.println("Decrypted: " + msg);
+
+                        if (digest.equals(hmacString)) {
+                            System.out.println("HMAC VERIFIED");
+                        }
+
                         System.out.println("********************");
 
                         if (decLine.equals("Over")) {
@@ -125,5 +141,20 @@ public class Server {
     public static void main(String[] args) {
         // write your code here
         Server server = new Server(5000);
+    }
+
+    public static String toHexString(byte[] hash) {
+        // Convert byte array into signum representation
+        BigInteger number = new BigInteger(1, hash);
+
+        // Convert message digest into hex value
+        StringBuilder hexString = new StringBuilder(number.toString(16));
+
+        // Pad with leading zeros
+        while (hexString.length() < 32) {
+            hexString.insert(0, '0');
+        }
+
+        return hexString.toString();
     }
 }
