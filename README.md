@@ -1,4 +1,4 @@
-# CIS-3319-Lab-2
+# HMAC Server/Client Chat Application
 ====== Implementation and Application of HMAC Program =====
 
 Function: Utilize HMAC and DES to create a simple client/server chat program. The program will display the encoded/decoded messages along with key, HMAC, verification and more.
